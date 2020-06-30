@@ -133,6 +133,7 @@ const App = () => {
       personService
         .create(numberObject)
         .then(entry => {
+          console.log(entry)
           setPersons(persons.concat(entry))
           setNewName('')
           setNewNumber('')
@@ -141,6 +142,15 @@ const App = () => {
           setTimeout(() => {
             setErrorMessage(null)
           }, 5000)
+        })
+        .catch(error => {
+          setErrorMessage(error.response.data.error)
+          setNotificationType('error')
+
+          setTimeout(() => {
+            setErrorMessage(null)
+          }, 5000)
+
         })
     }
   }
