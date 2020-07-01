@@ -1,81 +1,27 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
 
-blogsRouter.get('/', (request, response) => {
-    Blog
-      .find({})
-      .then(blogs => {
-        response.json(blogs)
-      })
-  })
-  
-  blogsRouter.post('/', (request, response) => {
-    const blog = new Blog(request.body)
-  
-    blog
-      .save()
-      .then(result => {
-        response.status(201).json(result)
-      })
-  })
-  
-module.exports = blogsRouter
-
-
-
-/* Other stuff from example
-
-notesRouter.get('/:id', (request, response, next) => {
-  Note.findById(request.params.id)
-    .then(note => {
-      if (note) {
-        response.json(note.toJSON())
-      } else {
-        response.status(404).end()
-      }
-    })
-    .catch(error => next(error))
+blogsRouter.get('/', async (request, response) => {
+  const blogs = await Blog.find()
+  response.json(blogs)
 })
 
-notesRouter.post('/', (request, response, next) => {
+blogsRouter.post('/', async (request, response) => {
   const body = request.body
 
-  const note = new Note({
-    content: body.content,
-    important: body.important || false,
-    date: new Date(),
-  })
-
-  note.save()
-    .then(savedNote => {
-      response.json(savedNote.toJSON())
+  if (!body.title || !body.url) {
+    response.status(400).send({ error: 'blog must contain both title and url' })
+  } else {
+    const blog = new Blog({
+      title: body.title,
+      author: body.author,
+      url: body.url,
+      likes: body.likes || 0
     })
-    .catch(error => next(error))
-})
-
-notesRouter.delete('/:id', (request, response, next) => {
-  Note.findByIdAndRemove(request.params.id)
-    .then(() => {
-      response.status(204).end()
-    })
-    .catch(error => next(error))
-})
-
-notesRouter.put('/:id', (request, response, next) => {
-  const body = request.body
-
-  const note = {
-    content: body.content,
-    important: body.important,
+  
+    const savedBlog = await blog.save()
+    response.json(savedBlog.toJSON())
   }
-
-  Note.findByIdAndUpdate(request.params.id, note, { new: true })
-    .then(updatedNote => {
-      response.json(updatedNote.toJSON())
-    })
-    .catch(error => next(error))
 })
 
-module.exports = notesRouter
-
-*/
+module.exports = blogsRouter
