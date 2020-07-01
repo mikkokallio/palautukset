@@ -8,6 +8,19 @@ content-type: application/json
 {
     "title": "My First Blog",
     "author": "Mikko Koo",
-    "url": "www.example.com",
-    "likes": 13
+    "url": "www.example.com"
+    //"likes": 13
+}
+
+###
+
+DELETE http://localhost:3003/api/blogs/5efd14aedf0e7096d7daf599
+
+###
+
+PUT http://localhost:3003/api/blogs/5efd17f4f3f1b79a9301cbed
+content-type: application/json
+
+{
+    "likes": 555
 }
