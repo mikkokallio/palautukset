@@ -1,0 +1,17 @@
+### correct pw
+POST http://localhost:3003/api/login
+content-type: application/json
+
+{
+    "username": "jjii",
+    "password": "zxyzjiikl"
+}
+
+### incorrect pw
+POST http://localhost:3003/api/login
+content-type: application/json
+
+{
+    "username": "jjii",
+    "password": "incorrect"
+}
