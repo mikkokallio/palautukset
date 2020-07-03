@@ -4,19 +4,20 @@ GET http://localhost:3003/api/blogs
 
 POST http://localhost:3003/api/blogs
 content-type: application/json
-Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImpqaWkiLCJpZCI6IjVlZmRkMmUyYWNjYTM4ZDg4OWY3YmU2NyIsImlhdCI6MTU5MzY5MjkwMn0._3bJDj7RBBKDR3A-fXAfl_QChyefaXluvKEq9nB_KFU
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3RlciIsImlkIjoiNWVmZWRhNTM2M2RhNTI3OWE0ODA0ZGFmIiwiaWF0IjoxNTkzNzYxODIwfQ.Z1lUGfGesCIqOPRaxwDcHPmpEdHLqj_b1psNLs4lzjE
 
 {
-    "title": "New Blog",
+    "title": "Great Blog",
     "author": "Mikko Koo",
     "url": "www.example.com",
-    "likes": 25,
-    "userId": "5efdb277f3d66ebee6e040ed"
+    "likes": 555,
+    "userId": "5efeda5363da5279a4804daf"
 }
 
 ###
 
-DELETE http://localhost:3003/api/blogs/5efd14aedf0e7096d7daf599
+DELETE http://localhost:3003/api/blogs/5efeea2ff89fb284ea083f19
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3RlciIsImlkIjoiNWVmZWRhNTM2M2RhNTI3OWE0ODA0ZGFmIiwiaWF0IjoxNTkzNzYyMzE1fQ.nH2bI3r3-LP5q3WWkFRaJBCYU7Jv1ToQTTj6h6KnxiA
 
 ###
 
