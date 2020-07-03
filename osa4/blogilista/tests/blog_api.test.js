@@ -21,6 +21,19 @@ const noLikesBlog = {
   url: "www.example.com"
 }
 
+const getToken = async () => {
+  const testUser = {
+    "username": "tester",
+    "password": "testaa"
+  }
+
+  const response = await api
+    .post('/api/login')
+    .send(testUser)
+  
+  return response.token
+}
+
 test('a blog has an id', async () => {
   const allBlogs = await helper.blogsInDb()
 
@@ -34,8 +47,10 @@ describe('adding a new blog', () => {
   })
 
   test('succeeds with 200 if valid', async () => {
+    const token = process.env.TEST_TOKEN
     await api
       .post('/api/blogs')
+      .set('Authorization', `bearer ${token}`)
       .send(testBlog)
       .expect(200)
       .expect('Content-Type', /application\/json/)
@@ -50,9 +65,18 @@ describe('adding a new blog', () => {
     )
   })
 
-  test('gets 0 likes if has no likes', async () => {
+  test('fails with 401 if no token', async () => {
     await api
       .post('/api/blogs')
+      .send(testBlog)
+      .expect(401)
+  })
+
+  test('gets 0 likes if has no likes', async () => {
+    const token = process.env.TEST_TOKEN
+    await api
+      .post('/api/blogs')
+      .set('Authorization', `bearer ${token}`)
       .send(noLikesBlog)
 
     const blogsAfter = await helper.blogsInDb()
@@ -64,12 +88,15 @@ describe('adding a new blog', () => {
   })
 
   test('fails with 400 if no title or url', async () => {
+    const token = process.env.TEST_TOKEN
+
     const newBlog = {
       url: "www.example.com"
     }
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `bearer ${token}`)
       .send(newBlog)
       .expect(400)
 
@@ -141,4 +168,13 @@ afterAll(() => {
 
 
 
+//Token-kirjautumisen lisääminen valitettavasti hajotti blogien lisäämiseen liittyvät testit.
+//Korjaa testit. Tee myös testi, joka varmistaa että uuden blogin lisäys ei onnistu, 
+//ja pyyntö palauttaa oikean statuskoodin 401 Unauthorized jos pyynnön mukana ei ole tokenia.
 
+//Tarvitset luultavasti tätä tietoa tehtävää tehdessä.
+/* request(app)
+  .post('/api')
+  .set('Authorization', 'abc123') // Works.
+
+  */
