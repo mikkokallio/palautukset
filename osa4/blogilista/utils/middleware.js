@@ -17,8 +17,8 @@ const getTokenFrom = request => {
 }
 
 const tokenExtractor = (request, response, next) => {
-  response.token = getTokenFrom(request)
-  logger.info(response.token)
+  request.token = getTokenFrom(request)
+  logger.info(request.token)
 
   next()
 }

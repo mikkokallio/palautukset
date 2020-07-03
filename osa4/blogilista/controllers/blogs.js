@@ -10,25 +10,15 @@ blogsRouter.get('/', async (request, response) => {
   response.json(blogs)
 })
 
-const getTokenFrom = request => {
-  const authorization = request.get('authorization')
-  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-    return authorization.substring(7)
-  }
-  return null
-}
-
 blogsRouter.post('/', async (request, response) => {
   const body = request.body
-  const token = getTokenFrom(request)
 
-  const decodedToken = jwt.verify(token, process.env.SECRET)
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
 
-  if (!token || !decodedToken.id) {
+  if (!request.token || !decodedToken.id) {
     return response.status(401).json({ error: 'token missing or invalid' })
   }
   const user = await User.findById(decodedToken.id)
-  //const user = await User.findById(body.userId)
 
   if (!body.title || !body.url) {
     response.status(400).send({ error: 'blog must contain both title and url' })
@@ -51,11 +41,10 @@ blogsRouter.post('/', async (request, response) => {
 
 blogsRouter.delete('/:id', async (request, response) => {
   const blog = await Blog.findById(request.params.id)
-  const token = getTokenFrom(request)
 
-  const decodedToken = jwt.verify(token, process.env.SECRET)
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
 
-  if (!token || !decodedToken.id) {
+  if (!request.token || !decodedToken.id) {
     return response.status(401).json({ error: 'token missing or invalid' })
   }
   const user = await User.findById(decodedToken.id)
@@ -67,11 +56,6 @@ blogsRouter.delete('/:id', async (request, response) => {
     response.status(401).send({ error: 'user does not match' })
   }
 })
-
-/*
-poisto onnistuu ainoastaan jos poisto-operaation tekijä (eli se kenen token on pyynnön mukana) on sama kuin blogin lisääjä.
-Jos poistoa yritetään ilman tokenia tai väärän käyttäjän toimesta, tulee operaation palauttaa asiaan kuuluva statuskoodi.
-*/
 
 blogsRouter.put('/:id', async (request, response) => {
   const upd = await Blog.findByIdAndUpdate(request.params.id, { 'likes': request.body.likes })
