@@ -14,7 +14,6 @@ const App = () => {
   const [user, setUser] = useState(null)
   const [message, setMessage] = useState(null)
   const [notificationType, setNotificationType] = useState(null)
-  const [loginVisible, setLoginVisible] = useState(false)
 
   useEffect(() => {
     blogService.getAll().then(blogs =>
@@ -122,7 +121,7 @@ const App = () => {
       })
   }
 
-  const logout = async (event) => {
+  const logout = async () => {
     window.localStorage.removeItem(
       'loggedBlogappUser'
     )

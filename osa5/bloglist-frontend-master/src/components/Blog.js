@@ -25,5 +25,4 @@ const Blog = ({ blog, onClick, del }) => {
     </div>
   )
 }
-
 export default Blog
