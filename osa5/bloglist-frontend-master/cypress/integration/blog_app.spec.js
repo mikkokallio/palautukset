@@ -10,6 +10,10 @@ describe('Blog ', function () {
     cy.visit('http://localhost:3000')
   })
 
+  it('UI shows login', function() {
+    cy.contains('login')
+  })
+
   it('login fails with wrong password', function() {
     cy.contains('login').click()
     cy.get('#username').type('tester')
