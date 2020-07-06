@@ -85,7 +85,7 @@ const App = () => {
         console.log(entry)
         const copy = blogs.filter(blog => blog.id !== target.id)
         setBlogs(copy)
-        setMessage(`${entry.title} deleted`)
+        setMessage(`${target.title} deleted`)
         setNotificationType('success')
         setTimeout(() => {
           setMessage(null)
@@ -133,8 +133,8 @@ const App = () => {
       <button onClick={logout}>logout</button>
       <h2>blogs</h2>
       {
-        blogs.map(blog =>
-          <Blog key={blog.id} blog={blog} onClick={addLike} del={delBlog} />
+        blogs.map((blog, i) =>
+          <Blog id={i} key={blog.id} blog={blog} onClick={addLike} del={delBlog} />
         )
       }
     </div>)

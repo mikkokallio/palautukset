@@ -1,7 +1,7 @@
 import React from 'react'
 import Togglable from './Togglable'
 
-const Blog = ({ blog, onClick, del }) => {
+const Blog = ({ blog, id, onClick, del }) => {
   const blogStyle = {
     paddingTop: 10,
     paddingLeft: 2,
@@ -13,7 +13,7 @@ const Blog = ({ blog, onClick, del }) => {
   console.log(blog)
 
   return (
-    <div style={blogStyle} className='blog'>
+    <div style={blogStyle} className='blog' id={id}>
       <div>
         {blog.title} {blog.author} <button onClick={() => del(blog)}>delete</button>
         <Togglable buttonLabel="info">
