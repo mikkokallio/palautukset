@@ -1,11 +1,18 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Anecdotes from './components/Anecdotes'
 import NewAnecdote from './components/NewAnecdote'
 import Filter from './components/Filter'
 import Notification from './components/Notification'
-import { useSelector } from 'react-redux'
+import { initialize } from './reducers/anecdoteReducer'
+import { useDispatch } from 'react-redux'
 
 const App = () => {
+  const dispatch = useDispatch()
+
+  useEffect(() => {
+    dispatch(initialize()) 
+  },[dispatch]) 
+
   return (
     <div>
       <h2>Anecdotes</h2>
