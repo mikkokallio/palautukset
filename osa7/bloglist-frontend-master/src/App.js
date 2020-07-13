@@ -1,0 +1,180 @@
+import React, { useState, useEffect, useRef } from 'react'
+import Blog from './components/Blog'
+import LoginForm from './components/LoginForm'
+import BlogForm from './components/BlogForm'
+import Togglable from './components/Togglable'
+import blogService from './services/blogs'
+import loginService from './services/login'
+import { Alert, Button, Table } from 'react-bootstrap'
+
+const App = () => {
+  const [blogs, setBlogs] = useState([])
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [user, setUser] = useState(null)
+  const [message, setMessage] = useState(null)
+  const [notificationType, setNotificationType] = useState(null)
+
+  useEffect(() => {
+    blogService.getAll().then(blogs =>
+      setBlogs(blogs)
+    )
+  }, [])
+
+  useEffect(() => {
+    const loggedUserJSON = window.localStorage.getItem('loggedBlogappUser')
+    if (loggedUserJSON) {
+      const user = JSON.parse(loggedUserJSON)
+      setUser(user)
+      blogService.setToken(user.token)
+    }
+  }, [])
+
+  const handleLogin = async (event) => {
+    event.preventDefault()
+    try {
+      const userLogin = await loginService.login({
+        username, password,
+      })
+
+      window.localStorage.setItem(
+        'loggedBlogappUser', JSON.stringify(userLogin)
+      )
+
+      blogService.setToken(userLogin.token)
+      setUser(userLogin)
+      setUsername('')
+      setPassword('')
+      setMessage(`welcome ${userLogin.username}!`)
+      setNotificationType('success')
+      setTimeout(() => {
+        setMessage(null)
+      }, 5000)
+    } catch (exception) {
+      setMessage('wrong username or password')
+      setNotificationType('danger')
+      setTimeout(() => {
+        setMessage(null)
+      }, 5000)
+    }
+  }
+
+  const addBlog = blogObject => {
+    blogFormRef.current.toggleVisibility()
+
+    blogService
+      .create(blogObject)
+      .then(entry => {
+        console.log(entry)
+        setBlogs(blogs.concat(entry))
+        setMessage(`${entry.title} by ${entry.author} added`)
+        setNotificationType('success')
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
+      })
+      .catch(error => {
+        setMessage(error.response.data.error)
+        setNotificationType('error')
+
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
+      })
+  }
+
+  const delBlog = target => {
+    blogService
+      .remove(target.id)
+      .then(entry => {
+        console.log(entry)
+        const copy = blogs.filter(blog => blog.id !== target.id)
+        setBlogs(copy)
+        setMessage(`${target.title} deleted`)
+        setNotificationType('success')
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
+      })
+      .catch(error => {
+        setMessage(error.response.data.error)
+        setNotificationType('danger')
+
+        setTimeout(() => {
+          setMessage(null)
+        }, 5000)
+      })
+  }
+
+  const addLike = blog => {
+    let blogObject = blog
+    blogObject.likes++
+
+    console.log('Blog: ', blogObject)
+
+    blogService
+      .update(blog.id, blogObject)
+      .then(entry => {
+        console.log(entry)
+        const copy = blogs
+          .map(mapped => mapped.id === blog.id ? blogObject : mapped)
+          .sort((a, b) => b.likes - a.likes)
+        setBlogs(copy)
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  }
+
+  const logout = async () => {
+    window.localStorage.removeItem(
+      'loggedBlogappUser'
+    )
+    setUser(null)
+  }
+
+  const blogComp = () => (
+    <div>
+      <Button onClick={logout}>logout</Button>
+      <h2>blogs</h2>
+      {
+        blogs.map((blog, i) =>
+          <Blog id={i} key={blog.id} blog={blog} onClick={addLike} del={delBlog} />
+        )
+      }
+    </div>)
+
+  const blogFormRef = useRef()
+
+  return (
+    <div class='container'>
+      {(message &&
+        <Alert variant={notificationType}>
+          {message}
+        </Alert>
+      )}
+      {user === null ?
+        <Togglable buttonLabel='login'>
+          <LoginForm
+            username={username}
+            password={password}
+            handleUsernameChange={({ target }) => setUsername(target.value)}
+            handlePasswordChange={({ target }) => setPassword(target.value)}
+            handleSubmit={handleLogin}
+          />
+        </Togglable> :
+        <div>
+          <p>{user.name} logged in</p>
+          <Togglable buttonLabel="new blog" ref={blogFormRef}>
+            <BlogForm
+              createBlog={addBlog}
+            />
+          </Togglable>
+          {blogComp()}
+        </div>
+      }
+    </div>
+  )
+}
+
+export default App
