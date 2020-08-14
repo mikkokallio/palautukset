@@ -1,23 +1,101 @@
 import React, { useState, useEffect, useRef } from 'react'
+import ReactDOM from 'react-dom'
 import Blog from './components/Blog'
 import LoginForm from './components/LoginForm'
 import BlogForm from './components/BlogForm'
 import Togglable from './components/Togglable'
 import blogService from './services/blogs'
 import loginService from './services/login'
-import { Alert, Button, Table } from 'react-bootstrap'
+import userService from './services/users'
+import { Alert, Button } from 'react-bootstrap'
+import { createStore, combineReducers } from 'redux'
+import {
+  BrowserRouter as Router,
+  Switch, Route, Link, useParams
+} from "react-router-dom"
+
+const notificationReducer = (state = {}, action) => {
+  switch (action.type) {
+    case 'SET_NOTIFICATION':
+      return { type: action.data.type, message: action.data.message }
+    default:
+      return state
+  }
+}
+
+const blogReducer = (state = [], action) => {
+  switch (action.type) {
+    case 'ADD_ALL_BLOGS':
+      return action.data.blogs
+    case 'ADD_BLOG':
+      return state.concat(action.data)
+    case 'SET_BLOGS':
+      return action.data
+    default:
+      return state
+  }
+}
+
+const userReducer = (state = {}, action) => {
+  switch (action.type) {
+    case 'SET_USER':
+      return action.data
+    default:
+      return state
+  }
+}
+
+const reducer = combineReducers({
+  notification: notificationReducer,
+  blogs: blogReducer,
+  user: userReducer
+})
+
+const store = createStore(reducer)
+
+store.subscribe(() => {
+  const storeNow = store.getState()
+  console.log(storeNow)
+})
+
+const User = ({ users }) => {
+  const id = useParams().id
+  console.log(id)
+  const user = users.find(n => n.id === id)
+  console.log('user ', user)
+  if (!user) {
+    return (<div>Loading...</div>)
+  }
+  return (
+    <div>
+      <h2>{user.name}</h2>
+      <p>Has added blogs:</p>
+      <ul>
+        {
+          user.blogs.map((blog, i) =>
+            <li id={i} key={user.id}>{blog.title}</li>
+          )
+        }
+      </ul>
+    </div>)
+}
 
 const App = () => {
-  const [blogs, setBlogs] = useState([])
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [user, setUser] = useState(null)
-  const [message, setMessage] = useState(null)
-  const [notificationType, setNotificationType] = useState(null)
+  const [users, setUsers] = useState([])
+
+  useEffect(() => {
+    userService.getAll().then(res =>
+      setUsers(res)
+    ).then(console.log('users_ ', users))
+  }, [])
 
   useEffect(() => {
     blogService.getAll().then(blogs =>
-      setBlogs(blogs)
+      store.dispatch({
+        type: 'ADD_ALL_BLOGS', data: { blogs }
+      })
     )
   }, [])
 
@@ -25,7 +103,7 @@ const App = () => {
     const loggedUserJSON = window.localStorage.getItem('loggedBlogappUser')
     if (loggedUserJSON) {
       const user = JSON.parse(loggedUserJSON)
-      setUser(user)
+      store.dispatch({ type: 'SET_USER', data: user })
       blogService.setToken(user.token)
     }
   }, [])
@@ -42,19 +120,27 @@ const App = () => {
       )
 
       blogService.setToken(userLogin.token)
-      setUser(userLogin)
+      store.dispatch({ type: 'SET_USER', data: userLogin })
+
       setUsername('')
       setPassword('')
-      setMessage(`welcome ${userLogin.username}!`)
-      setNotificationType('success')
+      store.dispatch({
+        type: 'SET_NOTIFICATION', data: { message: `welcome ${userLogin.username}!`, type: 'success' }
+      })
       setTimeout(() => {
-        setMessage(null)
+        store.dispatch({
+          type: 'SET_NOTIFICATION', data: { message: '', type: '' }
+        })
       }, 5000)
+
     } catch (exception) {
-      setMessage('wrong username or password')
-      setNotificationType('danger')
+      store.dispatch({
+        type: 'SET_NOTIFICATION', data: { message: 'wrong username or password', type: 'danger' }
+      })
       setTimeout(() => {
-        setMessage(null)
+        store.dispatch({
+          type: 'SET_NOTIFICATION', data: { message: '', type: '' }
+        })
       }, 5000)
     }
   }
@@ -65,20 +151,26 @@ const App = () => {
     blogService
       .create(blogObject)
       .then(entry => {
-        console.log(entry)
-        setBlogs(blogs.concat(entry))
-        setMessage(`${entry.title} by ${entry.author} added`)
-        setNotificationType('success')
+        console.log('entry: ', entry)
+        store.dispatch({ type: 'ADD_BLOG', data: entry })
+        //setBlogs(blogs.concat(entry))
+        store.dispatch({
+          type: 'SET_NOTIFICATION', data: { message: `${entry.title} by ${entry.author} added`, type: 'success' }
+        })
         setTimeout(() => {
-          setMessage(null)
+          store.dispatch({
+            type: 'SET_NOTIFICATION', data: { message: '', type: '' }
+          })
         }, 5000)
       })
       .catch(error => {
-        setMessage(error.response.data.error)
-        setNotificationType('error')
-
+        store.dispatch({
+          type: 'SET_NOTIFICATION', data: { message: 'An error occurred', type: 'danger' }
+        })
         setTimeout(() => {
-          setMessage(null)
+          store.dispatch({
+            type: 'SET_NOTIFICATION', data: { message: '', type: '' }
+          })
         }, 5000)
       })
   }
@@ -89,20 +181,46 @@ const App = () => {
       .then(entry => {
         console.log(entry)
         const copy = blogs.filter(blog => blog.id !== target.id)
-        setBlogs(copy)
-        setMessage(`${target.title} deleted`)
-        setNotificationType('success')
+        store.dispatch({ type: 'SET_BLOGS', data: copy })
+
+        store.dispatch({
+          type: 'SET_NOTIFICATION', data: { message: `${target.title} deleted`, type: 'success' }
+        })
         setTimeout(() => {
-          setMessage(null)
+          store.dispatch({
+            type: 'SET_NOTIFICATION', data: { message: '', type: '' }
+          })
         }, 5000)
+
       })
       .catch(error => {
-        setMessage(error.response.data.error)
-        setNotificationType('danger')
-
+        store.dispatch({
+          type: 'SET_NOTIFICATION', data: { message: 'error occurred', type: 'error' }
+        })
         setTimeout(() => {
-          setMessage(null)
+          store.dispatch({
+            type: 'SET_NOTIFICATION', data: { message: '', type: '' }
+          })
         }, 5000)
+      })
+  }
+
+  const addComment = (blog, comment) => {
+    let blogObject = blog.blog
+    if (!blogObject.comments) blogObject.comments = []
+    blogObject.comments.push(blog.comment)
+    
+    blogService
+      .comment(blogObject.id, blogObject.comments)
+      .then(entry => {
+        console.log(entry)
+        const copy = store.getState().blogs
+          .map(mapped => mapped.id === blogObject.id ? blogObject : mapped)
+          .sort((a, b) => b.likes - a.likes)
+        store.dispatch({ type: 'SET_BLOGS', data: copy })
+      })
+      .catch(error => {
+        console.log(error)
       })
   }
 
@@ -116,10 +234,10 @@ const App = () => {
       .update(blog.id, blogObject)
       .then(entry => {
         console.log(entry)
-        const copy = blogs
+        const copy = store.getState().blogs
           .map(mapped => mapped.id === blog.id ? blogObject : mapped)
           .sort((a, b) => b.likes - a.likes)
-        setBlogs(copy)
+        store.dispatch({ type: 'SET_BLOGS', data: copy })
       })
       .catch(error => {
         console.log(error)
@@ -130,8 +248,11 @@ const App = () => {
     window.localStorage.removeItem(
       'loggedBlogappUser'
     )
-    setUser(null)
+    store.dispatch({ type: 'SET_USER', data: null })
   }
+
+  const blogs = store.getState().blogs
+  console.log('blogs: ')
 
   const blogComp = () => (
     <div>
@@ -139,42 +260,87 @@ const App = () => {
       <h2>blogs</h2>
       {
         blogs.map((blog, i) =>
-          <Blog id={i} key={blog.id} blog={blog} onClick={addLike} del={delBlog} />
+          <p id={i} key={blog.id}><Link to={`/blogs/${blog.id}`}>{blog.title}</Link></p>
         )
       }
     </div>)
 
   const blogFormRef = useRef()
 
+  console.log('store state', store.getState())
+
+  const notification = store.getState().notification
+  const user = store.getState().user
+
   return (
-    <div class='container'>
-      {(message &&
-        <Alert variant={notificationType}>
-          {message}
-        </Alert>
-      )}
-      {user === null ?
-        <Togglable buttonLabel='login'>
-          <LoginForm
-            username={username}
-            password={password}
-            handleUsernameChange={({ target }) => setUsername(target.value)}
-            handlePasswordChange={({ target }) => setPassword(target.value)}
-            handleSubmit={handleLogin}
-          />
-        </Togglable> :
-        <div>
-          <p>{user.name} logged in</p>
-          <Togglable buttonLabel="new blog" ref={blogFormRef}>
-            <BlogForm
-              createBlog={addBlog}
-            />
-          </Togglable>
-          {blogComp()}
-        </div>
-      }
-    </div>
+    <Router>
+      <div>
+        <Link to="/">blogs</Link>
+        <Link to="/users">users</Link>
+        {user ? <p>{user.name} logged in</p> : <p>logged out</p>}
+      </div>
+
+      <Switch>
+        <Route path="/users/:id">
+          <User users={users} />
+        </Route>
+        <Route path="/users">
+          <div className='container'>
+            <h2>Users</h2>
+            {
+              users.map((user, i) =>
+                <p id={i} key={user.id}><Link to={`/users/${user.id}`}>{user.name}</Link> has posted {user.blogs.length} blogs</p>
+              )
+            }
+          </div>
+        </Route>
+        <Route path="/blogs/:id">
+          <Blog blogs={blogs} del={delBlog} onClick={addLike} addComment={addComment} />
+        </Route>
+        <Route path="/">
+          <div className='container'>
+            {(notification.message &&
+              <Alert variant={notification.type}>
+                {notification.message}
+              </Alert>
+            )}
+            {user === null ?
+              <Togglable buttonLabel='login'>
+                <LoginForm
+                  username={username}
+                  password={password}
+                  handleUsernameChange={({ target }) => setUsername(target.value)}
+                  handlePasswordChange={({ target }) => setPassword(target.value)}
+                  handleSubmit={handleLogin}
+                />
+              </Togglable> :
+              <div>
+
+                <Togglable buttonLabel="new blog" ref={blogFormRef}>
+                  <BlogForm
+                    createBlog={addBlog}
+                  />
+                </Togglable>
+                {blogComp()}
+              </div>
+            }
+          </div>
+
+        </Route>
+      </Switch>
+
+      <div>
+        <i>Blogs app</i>
+      </div>
+    </Router>
   )
 }
+
+const renderApp = () => {
+  ReactDOM.render(<App />, document.getElementById('root'))
+}
+
+renderApp()
+store.subscribe(renderApp)
 
 export default App
