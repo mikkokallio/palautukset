@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
+import ChangeBorn from './components/ChangeBorn'
 
 const App = () => {
   const [page, setPage] = useState('authors')
@@ -13,6 +13,7 @@ const App = () => {
         <button onClick={() => setPage('authors')}>authors</button>
         <button onClick={() => setPage('books')}>books</button>
         <button onClick={() => setPage('add')}>add book</button>
+        <button onClick={() => setPage('edit')}>edit author</button>
       </div>
 
       <Authors
@@ -25,6 +26,10 @@ const App = () => {
 
       <NewBook
         show={page === 'add'}
+      />
+
+      <ChangeBorn
+        show={page === 'edit'}
       />
 
     </div>
