@@ -6,20 +6,24 @@ const ALL_AUTHORS = gql`
 query {
   allAuthors  {
     name,
+    id,
     born,
     bookCount
   }
 }
 `
 
-const Authors = (props) => {
+const  Authors = (props) => {
   const result = useQuery(ALL_AUTHORS)
 
   if (!props.show) {
     return null
   }
 
-  const authors = !result.loading ? result.data.allAuthors : []
+  console.log('Result: ', result)
+
+  //const authors = !result.loading ? result.data.allAuthors : []
+  const authors = result.data ? result.data.allAuthors : []
   console.log(authors)
 
   return (

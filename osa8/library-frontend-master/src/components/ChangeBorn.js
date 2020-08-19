@@ -14,9 +14,9 @@ const ChangeBorn = (props) => {
   const [born, setBorn] = useState('')
 
   const result = useQuery(ALL_AUTHORS)
-  //const authors = result.map(a => a.name)
 
-  const authors = !result.loading ?
+  //const authors = !result.loading ?
+  const authors = result.data ?
     result.data.allAuthors.map(a => {
       return { value: a.name, label: a.name }
     }) : []

@@ -1,85 +1,34 @@
-const { ApolloServer, gql } = require('apollo-server')
+const { ApolloServer, UserInputError, gql } = require('apollo-server')
+const mongoose = require('mongoose')
+const Book = require('./models/book')
+const Author = require('./models/author')
+const config = require('./utils/config')
 
-let authors = [
-  {
-    name: 'Robert Martin',
-    id: "afa51ab0-344d-11e9-a414-719c6709cf3e",
-    born: 1952,
-  },
-  {
-    name: 'Martin Fowler',
-    id: "afa5b6f0-344d-11e9-a414-719c6709cf3e",
-    born: 1963
-  },
-  {
-    name: 'Fyodor Dostoevsky',
-    id: "afa5b6f1-344d-11e9-a414-719c6709cf3e",
-    born: 1821
-  },
-  {
-    name: 'Joshua Kerievsky', // birthyear not known
-    id: "afa5b6f2-344d-11e9-a414-719c6709cf3e",
-  },
-  {
-    name: 'Sandi Metz', // birthyear not known
-    id: "afa5b6f3-344d-11e9-a414-719c6709cf3e",
-  },
-]
+mongoose.set('useFindAndModify', false)
 
-let books = [
-  {
-    title: 'Clean Code',
-    published: 2008,
-    author: 'Robert Martin',
-    id: "afa5b6f4-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring']
-  },
-  {
-    title: 'Agile software development',
-    published: 2002,
-    author: 'Robert Martin',
-    id: "afa5b6f5-344d-11e9-a414-719c6709cf3e",
-    genres: ['agile', 'patterns', 'design']
-  },
-  {
-    title: 'Refactoring, edition 2',
-    published: 2018,
-    author: 'Martin Fowler',
-    id: "afa5de00-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring']
-  },
-  {
-    title: 'Refactoring to patterns',
-    published: 2008,
-    author: 'Joshua Kerievsky',
-    id: "afa5de01-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring', 'patterns']
-  },
-  {
-    title: 'Practical Object-Oriented Design, An Agile Primer Using Ruby',
-    published: 2012,
-    author: 'Sandi Metz',
-    id: "afa5de02-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring', 'design']
-  },
-  {
-    title: 'Crime and punishment',
-    published: 1866,
-    author: 'Fyodor Dostoevsky',
-    id: "afa5de03-344d-11e9-a414-719c6709cf3e",
-    genres: ['classic', 'crime']
-  },
-  {
-    title: 'The Demon ',
-    published: 1872,
-    author: 'Fyodor Dostoevsky',
-    id: "afa5de04-344d-11e9-a414-719c6709cf3e",
-    genres: ['classic', 'revolution']
-  },
-]
+//const MONGODB_URI = 'mongodb+srv://fullstack:sekred@cluster0-ostce.mongodb.net/graphql?retryWrites=true'
+
+console.log('connecting to', config.MONGODB_URI)
+
+mongoose.connect(config.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('connected to MongoDB')
+  })
+  .catch((error) => {
+    console.log('error connection to MongoDB:', error.message)
+  })
 
 const typeDefs = gql`
 
+  type User {
+    username: String!
+    id: ID!
+  }
+
+  type Token {
+    value: String!
+  }  
+  
   type Author {
     name: String!
     born: Int
@@ -90,8 +39,8 @@ const typeDefs = gql`
   type Book {
     title: String!
     published: Int!
-    author: String!
-    genres: [String]
+    author: Author!
+    genres: [String!]!
     id: ID! 
   }
   
@@ -102,6 +51,7 @@ const typeDefs = gql`
     allAuthors: [Author!]!
     findBook(title: String!): Book
     findAuthor(name: String!): Author
+    me: User
   }
   type Mutation {
     addBook(
@@ -113,40 +63,100 @@ const typeDefs = gql`
     editAuthor(
       name: String!
       setBornTo: Int!
-    ): Author
+    ): Author,
+    createUser(
+      username: String!
+    ): User,
+    login(
+      username: String!
+      password: String!
+    ): Token
   }
 `
 
+
+/*
+mutation {
+  addBook(title:"Sook-En Park",author:"Suki Suki",published:2023){
+    title
+    id
+  }
+}
+*/
+
 const resolvers = {
   Query: {
-    bookCount: () => books.length,
-    authorCount: () => authors.length,
+    bookCount: () => Book.collection.countDocuments(),
+    authorCount: () => Author.collection.countDocuments(),
     allBooks: (root, args) => {
-      let filteredBooks = args.author ? books.filter(b => b.author === args.author) : books
-      return args.genre ? filteredBooks.filter(b => b.genres.includes(args.genre)) : filteredBooks
-    },
-    allAuthors: () => authors,
-    findBook: (root, args) =>
-      books.find(b => b.title === args.title),
-    findAuthor: (root, args) =>
-      authors.find(a => a.name === args.name)
-  },
-  Mutation: {
-    editAuthor: (root, args) => {
-      authors = authors.map(a => a.name === args.name ? { ...a, born: args.setBornTo } : a)
-      return authors.find(a => a.name === args.name)
-    },
-    addBook: (root, args) => {
-      books.push( args )
-      if (!authors.includes(args.author)) {
-        authors.push({ name: args.author})
+      let params = {}
+      if (args.author) {
+        params.author = args.author
       }
-      return args
+      if (args.genre) {
+        params.genres = { $in: args.genre }
+      }
+      return Book.find(params)
+    },
+    allAuthors: () => {
+      const res = Author.find({})
+      console.log(res)
+      return res
+    },
+    findBook: (root, args) =>
+      Book.findOne({ title: args.title }),
+    findAuthor: (root, args) =>
+      Author.findOne({ name: args.name })
+  },
+
+  /*
+
+  */
+  Mutation: {
+    editAuthor: async (root, args) => {
+      const author = await Author.findOne({ name: args.name })
+      author.born = args.setBornTo
+      try {
+        await author.save()
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        })
+      }
+      return author
+    },
+    addBook: async (root, args) => {
+      let id = ''
+      const author = await Author.findOne({ name: args.author })
+      console.log('Author: ', author)
+
+      if (!author) {
+        const newAuthor = new Author({ name: args.author })
+        const res = await newAuthor.save()
+        console.log(res)
+        id = res.id
+      } else {
+        id = author.id
+      }
+
+      const book = new Book({ ...args, author: id })
+      try {
+        await book.save()
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        })
+      }
+
+
+      return book
     }
   },
   Author: {
-    bookCount: (root) =>
-      books.filter(b => b.author === root.name).length
+    bookCount: async (root) => {
+      const books = await Book.find({ author: root.id })
+      return books.length
+    }
   }
 }
 
@@ -158,3 +168,47 @@ const server = new ApolloServer({
 server.listen().then(({ url }) => {
   console.log(`Server ready at ${url}`)
 })
+
+/*
+
+8.14: Tietokanta, osa 2
+Täydennä sovellusta siten, että kaikki kyselyt (paitsi kyselyn allBooks parametri author) sekä mutaatiot toimivat.
+
+Saatat tässä tehtävässä hyötyä tästä.
+
+8.15 Tietokanta, osa 3
+Täydennä sovellusta siten, että tietokannan validointivirheet (esim. liian lyhyt kirjan tai kirjailijan nimi) käsitellään järkevästi, eli niiden seurauksena heitetään poikkeus UserInputError, jolle asetetaan sopiva virheviesti.
+
+8.16 käyttäjä ja kirjautuminen
+Lisää järjestelmään käyttäjienhallinta. Laajenna skeemaa seuraavasti:
+
+type User {
+  username: String!
+  favoriteGenre: String!
+  id: ID!
+}
+
+type Token {
+  value: String!
+}
+
+type Query {
+  // ..
+  me: User
+}
+
+type Mutation {
+  // ...
+  createUser(
+    username: String!
+    favoriteGenre: String!
+  ): User
+  login(
+    username: String!
+    password: String!
+  ): Token
+}
+Toteuta uuden queryn me sekä uusien mutaatioiden createUser ja login resolverit. Voit olettaa tämän luvun materiaalin tapaan, että kaikilla käyttäjillä on sama, kovakoodattu salasana.
+
+Tee mutaatiot addBook ja editAuthor mahdollisiksi ainoastaan, jos pyynnön mukana lähetetään validi token.
+*/
