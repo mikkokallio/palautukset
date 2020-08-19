@@ -1,0 +1,11 @@
+GET http://localhost:3003/api/blogs
+
+###
+POST http://localhost:3003/exercise
+content-type: application/json
+
+{
+  "daily_exercises": [1, 2, 2, 0, 3, 0, 2.5],
+  "target": 2.5
+}
+
