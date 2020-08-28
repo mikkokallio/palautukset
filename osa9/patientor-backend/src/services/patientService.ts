@@ -1,5 +1,5 @@
 import patientData from '../../data/patients'
-import { NewPatient, Patient, NonSensitivePatientEntry } from '../types';
+import { NewPatient, Patient, NonSensitivePatientEntry, NewHealthCheckEntry, NewOccupationalEntry, NewHospitalEntry, HealthCheckEntry, OccupationalHealthCareEntry, HospitalEntry } from '../types';
 import toNewPatient from "../utils";
 
 const patients: Patient[] = patientData.map(obj => {
@@ -33,8 +33,19 @@ const addEntry = (entry: NewPatient): Patient => {
     return newPatient;
 };
 
+const addPatientEntry = (entry: NewHealthCheckEntry | NewOccupationalEntry | NewHospitalEntry, id: string): HealthCheckEntry | OccupationalHealthCareEntry | HospitalEntry => {
+    let rid: string = Math.random().toString(36).substring(7);
+    const newEntry = {
+        id: `d${rid}-f723-11e9-8f0b-362b9e155667`,
+        ...entry
+    };
+    patients.map(p => p.id === id ? p.entries.push(newEntry) : p);
+    return newEntry;
+};
+
 export default {
     getEntries,
     getNonSensitiveEntries,
-    addEntry
+    addEntry,
+    addPatientEntry
 };

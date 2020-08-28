@@ -26,4 +26,15 @@ router.post('/', (req, res) => {
   }
 })
 
+router.post('/:id/entries', (req, res) => {
+  try {
+    const newEntry = req.body;
+
+    const addedEntry = patientService.addPatientEntry(newEntry, req.params.id);
+    res.json(addedEntry);
+  } catch (e) {
+    res.status(400).send(e.message);
+  }
+})
+
 export default router;
