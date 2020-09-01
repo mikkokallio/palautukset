@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import Select from 'react-select'
-import { gql, useMutation, useQuery } from '@apollo/client'
+import { useMutation, useQuery } from '@apollo/client'
 import { ALL_AUTHORS, CHANGE_BORN } from '../queries.js'
 
 const ChangeBorn = (props) => {
@@ -15,7 +15,6 @@ const ChangeBorn = (props) => {
 
   const result = useQuery(ALL_AUTHORS)
 
-  //const authors = !result.loading ?
   const authors = result.data ?
     result.data.allAuthors.map(a => {
       return { value: a.name, label: a.name }

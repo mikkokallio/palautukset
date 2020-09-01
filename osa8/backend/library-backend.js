@@ -1,12 +1,15 @@
-const { ApolloServer, UserInputError, gql } = require('apollo-server')
+const { ApolloServer, UserInputError, AuthenticationError, gql } = require('apollo-server')
 const mongoose = require('mongoose')
 const Book = require('./models/book')
 const Author = require('./models/author')
+const User = require('./models/user')
 const config = require('./utils/config')
+const jwt = require('jsonwebtoken')
+const JWT_SECRET = 'NEED_HERE_A_SECRET_KEY'
+const { PubSub } = require('apollo-server')
+const pubsub = new PubSub()
 
 mongoose.set('useFindAndModify', false)
-
-//const MONGODB_URI = 'mongodb+srv://fullstack:sekred@cluster0-ostce.mongodb.net/graphql?retryWrites=true'
 
 console.log('connecting to', config.MONGODB_URI)
 
@@ -22,6 +25,7 @@ const typeDefs = gql`
 
   type User {
     username: String!
+    favoriteGenre: String!
     id: ID!
   }
 
@@ -49,10 +53,12 @@ const typeDefs = gql`
     authorCount: Int!
     allBooks(author: String, genre: String): [Book!]!
     allAuthors: [Author!]!
+    allUsers: [User]!
     findBook(title: String!): Book
     findAuthor(name: String!): Author
     me: User
   }
+
   type Mutation {
     addBook(
       title: String!
@@ -66,23 +72,18 @@ const typeDefs = gql`
     ): Author,
     createUser(
       username: String!
+      favoriteGenre: String!
     ): User,
     login(
       username: String!
       password: String!
     ): Token
   }
+
+  type Subscription {
+    bookAdded: Book!
+  } 
 `
-
-
-/*
-mutation {
-  addBook(title:"Sook-En Park",author:"Suki Suki",published:2023){
-    title
-    id
-  }
-}
-*/
 
 const resolvers = {
   Query: {
@@ -103,17 +104,27 @@ const resolvers = {
       console.log(res)
       return res
     },
+    allUsers: () => {
+      const res = User.find({})
+      console.log(res)
+      return res
+    },
     findBook: (root, args) =>
       Book.findOne({ title: args.title }),
     findAuthor: (root, args) =>
-      Author.findOne({ name: args.name })
+      Author.findOne({ name: args.name }),
+    me: (root, args, context) => {
+      return context.currentUser
+    }
   },
 
-  /*
-
-  */
   Mutation: {
-    editAuthor: async (root, args) => {
+    editAuthor: async (root, args, context) => {
+      const currentUser = context.currentUser
+      if (!currentUser) {
+        throw new AuthenticationError("not authenticated")
+      }
+
       const author = await Author.findOne({ name: args.name })
       author.born = args.setBornTo
       try {
@@ -125,7 +136,12 @@ const resolvers = {
       }
       return author
     },
-    addBook: async (root, args) => {
+    addBook: async (root, args, context) => {
+      const currentUser = context.currentUser
+      if (!currentUser) {
+        throw new AuthenticationError("not authenticated")
+      }
+
       let id = ''
       const author = await Author.findOne({ name: args.author })
       console.log('Author: ', author)
@@ -148,9 +164,39 @@ const resolvers = {
         })
       }
 
+      pubsub.publish('BOOK_ADDED', { bookAdded: book })
 
       return book
+    },
+    createUser: (root, args) => {
+      const user = new User({ ...args })
+
+      return user.save()
+        .catch(error => {
+          throw new UserInputError(error.message, {
+            invalidArgs: args,
+          })
+        })
+    },
+    login: async (root, args) => {
+      const user = await User.findOne({ username: args.username })
+
+      if (!user || args.password !== 'secret') {
+        throw new UserInputError('wrong credentials')
+      }
+
+      const userForToken = {
+        username: user.username,
+        id: user._id
+      }
+
+      return { value: jwt.sign(userForToken, JWT_SECRET) }
     }
+  },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED'])
+    },
   },
   Author: {
     bookCount: async (root) => {
@@ -163,52 +209,20 @@ const resolvers = {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  context: async ({ req }) => {
+    const auth = req ? req.headers.authorization : null
+    if (auth && auth.toLowerCase().startsWith('bearer ')) {
+      const decodedToken = jwt.verify(
+        auth.substring(7), JWT_SECRET
+      )
+      const currentUser = await User
+        .findById(decodedToken.id).populate('friends')
+      return { currentUser }
+    }
+  }
 })
 
-server.listen().then(({ url }) => {
+server.listen().then(({ url, subscriptionsUrl }) => {
   console.log(`Server ready at ${url}`)
+  console.log(`Subscriptions ready at ${subscriptionsUrl}`)
 })
-
-/*
-
-8.14: Tietokanta, osa 2
-Täydennä sovellusta siten, että kaikki kyselyt (paitsi kyselyn allBooks parametri author) sekä mutaatiot toimivat.
-
-Saatat tässä tehtävässä hyötyä tästä.
-
-8.15 Tietokanta, osa 3
-Täydennä sovellusta siten, että tietokannan validointivirheet (esim. liian lyhyt kirjan tai kirjailijan nimi) käsitellään järkevästi, eli niiden seurauksena heitetään poikkeus UserInputError, jolle asetetaan sopiva virheviesti.
-
-8.16 käyttäjä ja kirjautuminen
-Lisää järjestelmään käyttäjienhallinta. Laajenna skeemaa seuraavasti:
-
-type User {
-  username: String!
-  favoriteGenre: String!
-  id: ID!
-}
-
-type Token {
-  value: String!
-}
-
-type Query {
-  // ..
-  me: User
-}
-
-type Mutation {
-  // ...
-  createUser(
-    username: String!
-    favoriteGenre: String!
-  ): User
-  login(
-    username: String!
-    password: String!
-  ): Token
-}
-Toteuta uuden queryn me sekä uusien mutaatioiden createUser ja login resolverit. Voit olettaa tämän luvun materiaalin tapaan, että kaikilla käyttäjillä on sama, kovakoodattu salasana.
-
-Tee mutaatiot addBook ja editAuthor mahdollisiksi ainoastaan, jos pyynnön mukana lähetetään validi token.
-*/

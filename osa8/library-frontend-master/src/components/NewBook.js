@@ -1,14 +1,24 @@
 import React, { useState } from 'react'
-import { gql, useMutation } from '@apollo/client'
+import { useMutation } from '@apollo/client'
 import { ALL_AUTHORS, ALL_BOOKS, ADD_BOOK } from '../queries.js'
 
 const NewBook = (props) => {
   const [newBook] = useMutation(ADD_BOOK, {
     refetchQueries: [ { query: ALL_AUTHORS }, { query: ALL_BOOKS } ],
     onError: (error) => {
-      console.log(error)
+      props.setError(error)
+    },
+    update: (store, response) => {
+      const dataInStore = store.readQuery({ query: ALL_BOOKS })
+      store.writeQuery({
+        query: ALL_BOOKS,
+        data: {
+          ...dataInStore,
+          allBooks: [ ...dataInStore.allBooks, response.data.addBook ]
+        }
+      })
     }
-  }) 
+  })
   const [title, setTitle] = useState('')
   const [author, setAuhtor] = useState('')
   const [published, setPublished] = useState('')
